@@ -196,3 +196,55 @@ def get_position():
 
     return positions,in_pos,pos_sym,entry_px,pnl_percentage,long
 
+def cancel_all_orders():
+    '''
+    This cancels all open orders on hyperliquid
+    '''
+    account:LocalAccount = eth_account.Account.from_key(hyper_secret)
+    exchange = Exchange(account.address,constants.MAINNET_API_URL)
+    info = Info(constants.MAINNET_API_URL,skip_ws=True)
+    open_orders = info.open_orders(account.address)
+
+    #print(open_orders)
+    print("these are the open orders.. want to cancel")
+
+    for open in open_orders:
+        #print(f'cancelling all orders{open}')
+        exchange.cancel(open["coin"],open["oid"])
+
+def get_open_order_prices() -> List[Decimal]:
+    account = eth_account.Account.from_key(hyper_secret)
+    exchange = Exchange(account.address,constants.MAINNET_API_URL)
+    info = Info(constants.MAINNET_API_URL,skip_ws=True)
+    open_orders = info.open_orders(account.address)
+
+    open_order_prices = []
+    for open in open_orders:
+        open_order_prices.append(Decimal(open["limitPx"]))
+
+    return open_order_prices
+
+def kill_switch(symbol):
+    positions,in_pos,pos_size,pos_sym,entry_px,pnl_perc,long = get_position()
+    while in_pos == True:
+        cancel_all_orders()
+
+        ask_bid = asking_bid(pos_sym)
+        ask = ask_bid[0]
+        bid = ask_bid[1]
+
+        pos_size = abs(pos_size)
+
+        if long == True:
+            limit_order(pos_sym,False,pos_size,ask)
+            print('kill switch --- SELL TO CLOSE TRADE SUBMITTED')
+            time.sleep(3)
+        elif long == False:
+            limit_order(pos_sym,True,pos_size,bid)
+            print('kill switch --- BUY TO CLOSE TRADE SUBMITTED')
+            time.sleep(3)
+
+        positions,in_pos,pos_size,pos_sym,entry_px,pnl_perc,long = get_position()
+    
+    print('positions terminated successfully')
+
