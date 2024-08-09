@@ -145,4 +145,17 @@ def get_supply_and_demand_zones(symbol,timeframe,limit):
 
 print(get_supply_and_demand_zones(hyper_symbol,timeframe,limit))
 
+def limit_order(coin:str,is_buy:bool,sz:float,limit_px:float,reduce_only:bool=False):
+    account:LocalAccount = eth_account.Account.from_key(hyper_secret)
+    exchange = Exchange(account,constants.MAINNET_API_URL)
+    sz = round(sz,1)
+    limit_px = round(limit_px,1)
+    print(f'placing limit order for {coin} with size {sz} at {limit_px}')
+    order_res = exchange.order(coin,is_buy,sz,limit_px,{"limit":{"tif":"Gtc"}},reduce_only=reduce_only)
+    if is_buy == True:
+        print(f"limit BUY order placed resting:{order_res['response']['data']['statuses'][0]}")
+    else:
+        print(f"limit SELL order placed, resting:{order_res['response']['data']['statuses'][0]}")
+
+    return order_res
 
