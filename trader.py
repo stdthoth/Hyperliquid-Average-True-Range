@@ -1,10 +1,13 @@
 from eth_account.signers.local import LocalAccount
-import eth_account
-import json
-import time
 from hyperliquid.info import Info
 from hyperliquid.exchange import Exchange
 from hyperliquid.utils import constants
+from dotenv import load_dotenv
+
+import eth_account
+import json
+import time
+import os
 import ccxt
 import pandas as pd
 import datetime
@@ -19,6 +22,10 @@ max_loss = -3
 target = 9
 
 hyper_symbol = symbol + '/USD'
+
+load_dotenv()
+hyper_secret = os.getenv("HYPER_SECRET")
+hyper_wallet = os.getenv("HYPER_WALLET")
 
 def asking_bid(symbol):
     '''
@@ -88,8 +95,8 @@ def get_timerange_in_ms(minutes_back):
     end_time_ms = current_time_ms
     return start_time_ms,end_time_ms
 
-def get_ohlcv(hyper_symbol,timeframe='1h',limit=100):
-    cb = ccxt.coinbaseadvanced()
+def get_ohlcv(hyper_symbol,timeframe,limit):
+    cb = ccxt.coinbase()
     ohlcv = cb.fetch_ohlcv(hyper_symbol,timeframe,limit=limit)
     df = pd.DataFrame(ohlcv,columns=['timestamp','open','high','low','close','volume'])
     df['timestamp'] = pd.to_datetime(df['timestamp'],unit='ms')
@@ -100,5 +107,42 @@ def get_ohlcv(hyper_symbol,timeframe='1h',limit=100):
 
     return df
 
+def get_supply_and_demand_zones(symbol,timeframe,limit):
+    '''
+    we can pass in a timeframe and limit to change supply and demand zones
+    it outputs a df with supply and demand zones for each time frames
+    #this is the supply zone and demand zone ranges
+    #row 0 is the CLOSE, row 1 is the WICK(high/low)
+    #and the supply/demand zone is in between the two 
+    '''
+    print('calculating supply and demand zone')
+
+    #get ohlcv data
+    sdz_limit = 96
+    sdz_sma = 20
+
+    sd_df = pd.DataFrame() #supply and demand zone data frame
+
+    df = get_ohlcv(symbol,timeframe,limit)
+    print(df)
+
+    support_1h = df.iloc[-1]['support']
+    resistance_1h = df.iloc[-1]['resis']
+    #print(f'this is support for 1h {support_1h} and this is resistance for 1h {resistance_1h}')
+
+    df['supp_lo'] = df[:-2]['low'].min()
+    supp_low_1h = df.iloc[-1]['supp_lo']
+    #print(f'this is the support low:{supp_low_1h} and this is support {support_1h} Demand zone is ')
+
+    df['res_hi'] = df[:-2]['high'].max()
+    res_high_1h =df.iloc[-1]['res_hi']
+    #print(f'this is the res high:{res_high_1h} and this is the resistace{resistance_1h} Supply Zone is')
+
+    sd_df['1h_dz'] = [supp_low_1h,support_1h]
+    sd_df['1h_sz'] = [res_high_1h,resistance_1h]
+
+    return sd_df #this is the df where the zone is indicated per timeframe and range is between row 0 and 1
+
+print(get_supply_and_demand_zones(hyper_symbol,timeframe,limit))
 
 
