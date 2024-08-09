@@ -3,6 +3,8 @@ from hyperliquid.info import Info
 from hyperliquid.exchange import Exchange
 from hyperliquid.utils import constants
 from dotenv import load_dotenv
+from typing import List
+from decimal import Decimal
 
 import eth_account
 import json
@@ -158,4 +160,39 @@ def limit_order(coin:str,is_buy:bool,sz:float,limit_px:float,reduce_only:bool=Fa
         print(f"limit SELL order placed, resting:{order_res['response']['data']['statuses'][0]}")
 
     return order_res
+
+def get_position():
+    account:LocalAccount= eth_account.Account.from_key(hyper_secret)
+    info = Info(constants.MAINNET_API_URL,skip_ws=True)
+    user_state = info.user_state(account.address)
+    print(f"this is the current account value:{user_state['margin_summary']['account_value']}")
+
+    positions = []
+
+    for position in user_state["assetPositions"]:
+        #print(float(position["position"]["szi"]))
+        if (position["position"]['coin'] == symbol) and float(position["position"]["szi"]) != 0:
+            positions.append(position["positions"])
+            in_pos = True
+            size = float(position["position"]["szi"])
+            pos_sym = position["position"]["coin"]
+            entry_px = float(position["position"]["entryPx"])
+            pnl_percentage = float(position["position"]["returnOnEquity"]) * 100
+            #print(f'this is the pnl{pnl_perc}')
+            break
+        else:
+            in_pos= False
+            size = 0
+            pos_sym = None
+            entry_px = 0
+            pnl_percentage = 0
+
+    if size > 0:
+        long = True
+    elif size < 0:
+        long = False
+    else:
+        long = None
+
+    return positions,in_pos,pos_sym,entry_px,pnl_percentage,long
 
