@@ -16,6 +16,10 @@ import datetime
 import schedule
 import requests
 
+load_dotenv()
+hyper_secret = os.getenv("HYPER_SECRET")
+hyper_wallet = os.getenv("HYPER_WALLET")
+
 symbol = 'ETH'
 timeframe = '5m'
 limit = 100
@@ -24,10 +28,7 @@ max_loss = -3
 target = 9
 
 hyper_symbol = symbol + '/USD'
-
-load_dotenv()
-hyper_secret = os.getenv("HYPER_SECRET")
-hyper_wallet = os.getenv("HYPER_WALLET")
+max_trading_range = 100
 
 def asking_bid(symbol):
     '''
@@ -247,4 +248,22 @@ def kill_switch(symbol):
         positions,in_pos,pos_size,pos_sym,entry_px,pnl_perc,long = get_position()
     
     print('positions terminated successfully')
+
+def close_with_pnl():
+    '''
+    manage loss with pnl close
+    '''
+    print('closing pnl')
+    positions,in_pos,pos_size,pos_sym,entry_px,pnl_perc,long = get_position()
+    if pnl_perc > target:
+        print(f'pnl gain is {pnl_perc} and target is {target}... closing position W ✅')
+        kill_switch(pos_sym)
+    elif pnl_perc <= max_loss:
+        print(f'pnl loss is {pnl_perc} and max loss is {max_loss}.... closing position L ❌')
+        kill_switch(pos_sym)
+    else:
+        print(f'pnl loss is {pnl_perc} and max loss is {max_loss} and target {target}... not CLOSED')
+    print('finished with pnl_close')
+
+
 
