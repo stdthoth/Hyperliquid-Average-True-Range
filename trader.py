@@ -76,6 +76,29 @@ def output_size_decimal(symbol):
         else:
             print('symbol not found')
     else:
-        print('Error:',resp.status_code)       
+        print('Error:',resp.status_code)
+
+def get_datetime_to_epoch(dt):
+    epoch = datetime.datetime.utcfromtimestamp(0)
+    return int((dt - epoch).total_seconds() * 1000.0)
+
+def get_timerange_in_ms(minutes_back):
+    current_time_ms = int(datetime.datetime.utcnow().timestamp() * 1000)
+    start_time_ms = current_time_ms - (minutes_back * 60 * 1000)
+    end_time_ms = current_time_ms
+    return start_time_ms,end_time_ms
+
+def get_ohlcv(hyper_symbol,timeframe='1h',limit=100):
+    cb = ccxt.coinbaseadvanced()
+    ohlcv = cb.fetch_ohlcv(hyper_symbol,timeframe,limit=limit)
+    df = pd.DataFrame(ohlcv,columns=['timestamp','open','high','low','close','volume'])
+    df['timestamp'] = pd.to_datetime(df['timestamp'],unit='ms')
+
+    df = df.tail(limit)
+    df['support'] = df[:-2]['close'].min()
+    df['resis'] = df[:-2]['close'].max()
+
+    return df
+
 
 
