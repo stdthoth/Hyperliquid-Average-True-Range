@@ -28,7 +28,8 @@ max_loss = -3
 target = 9
 
 hyper_symbol = symbol + '/USD'
-max_trading_range = 100
+max_trading_range = 30
+no_trading_hrs = 7
 
 def asking_bid(symbol):
     '''
@@ -109,6 +110,8 @@ def get_ohlcv(hyper_symbol,timeframe,limit):
     df['resis'] = df[:-2]['close'].max()
 
     return df
+
+
 
 def get_supply_and_demand_zones(symbol,timeframe,limit):
     '''
@@ -265,5 +268,41 @@ def close_with_pnl():
         print(f'pnl loss is {pnl_perc} and max loss is {max_loss} and target {target}... not CLOSED')
     print('finished with pnl_close')
 
+def trading_range(data):
+    data['previous_close'] = data['close'].shift(1)
+    data['high-low'] = abs(data['high']-data['low'])
+    data['high-pc'] = abs(data['high']-data['previous_close'])
+    data['low-pc'] = abs(data['low']-data['previous_close'])
+
+    trading_range = data[['high-low','high-pc','low-pc']].max(axis=1)
+    return trading_range
+
+def average_true_range(data,time):
+    data['tr'] = trading_range(data)
+    average_true_range = data['tr'].rolling(time).mean()
+    return average_true_range
+
+def no_trading(data, time):
+    data['no_trading'] = (data['tr' > max_trading_range]).any()
+    #if any are above the max trading range, it is not tradeable, so we want False
+    no_trading = data['no_trading']
+
+    return no_trading
+
+def get_atr_no_trading():
+    bars = get_ohlcv('BTC/USD',timeframe='1h',limit=50)
+    df = pd.DataFrame(bars[:-1],columns=['timestamp','open','high','close','volume'])
+    df['timestamp'] = pd.to_datetime(df['timestamp'],unit='ms')
+
+    atr = average_true_range(df,7)
+    #print(atr)
+
+    df['no_trading'] = (df['tr'] > max_trading_range).any()
+    #if any are above tht max trading range we want to return a false
+
+    no_trading = df['no_trading'].iloc[-1]
+    #print(df)
+
+    print(f'no trading {no_trading}')    
 
 
