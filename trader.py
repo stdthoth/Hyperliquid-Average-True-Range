@@ -14,6 +14,7 @@ import ccxt
 import pandas as pd
 import datetime
 import schedule
+import random
 import requests
 
 load_dotenv()
@@ -30,6 +31,9 @@ target = 9
 hyper_symbol = symbol + '/USD'
 max_trading_range = 30
 no_trading_hrs = 7
+
+min_acc_value = 5
+
 
 def asking_bid(symbol):
     '''
@@ -150,6 +154,50 @@ def get_supply_and_demand_zones(symbol,timeframe,limit):
     return sd_df #this is the df where the zone is indicated per timeframe and range is between row 0 and 1
 
 print(get_supply_and_demand_zones(hyper_symbol,timeframe,limit))
+
+def get_leverage():
+    '''
+    this function sets the leverage, calculates size and gets signal from a signal.txt file
+    #options are n for neutral 
+    #b60, b70, s60, s70 for skewed
+    '''
+    leverage = 20
+    #get balance
+    #get volume
+
+    print('leverage:',leverage)
+
+    #get signals from file
+    with open(",/signals.txt") as file:
+        signal = file.read().strip()
+    
+    #initialize long only and short only values to false
+    long_only = False
+    short_only = False
+
+    print(f'this is the signal {signal}')
+
+    #update the long and short based on the signal
+    if signal == 'n':
+        long_only = False
+        short_only = False
+    elif signal == 'b60':
+        long_only = (random.random() < 0.6)
+        short_only = False
+    elif signal == 'b70':
+        long_only == (random.random() < 0.7)
+        short_only == False
+    elif signal == 's60':
+        long_only == False
+        short_only == (random.random() < 0.6)
+    elif signal == 's70':
+        long_only == False
+        short_only == (random.random() < 0.7)
+
+    print('leverage:',leverage,'signal:',signal)
+
+
+
 
 def limit_order(coin:str,is_buy:bool,sz:float,limit_px:float,reduce_only:bool=False):
     account:LocalAccount = eth_account.Account.from_key(hyper_secret)
@@ -290,7 +338,7 @@ def no_trading(data, time):
     return no_trading
 
 def get_atr_no_trading():
-    bars = get_ohlcv('BTC/USD',timeframe='1h',limit=50)
+    bars = get_ohlcv('BTC/USD',timeframe='1h',limit=no_trading_hrs)
     df = pd.DataFrame(bars[:-1],columns=['timestamp','open','high','close','volume'])
     df['timestamp'] = pd.to_datetime(df['timestamp'],unit='ms')
 
