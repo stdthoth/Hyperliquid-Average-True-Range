@@ -199,6 +199,7 @@ def get_leverage():
 
 
 
+
 def limit_order(coin:str,is_buy:bool,sz:float,limit_px:float,reduce_only:bool=False):
     account:LocalAccount = eth_account.Account.from_key(hyper_secret)
     exchange = Exchange(account,constants.MAINNET_API_URL)
@@ -354,3 +355,70 @@ def get_atr_no_trading():
     print(f'no trading {no_trading}')    
 
 
+def bot():
+    sdz = get_supply_and_demand_zones(symbol,timeframe,limit)
+    #print(sdz)
+    sz_1hr = sdz['1h_sz']
+    sz_1hr_0 = sz_1hr.iloc[0]
+    sz_1hr_1 = sz_1hr.iloc[-1]
+
+
+    dz_1h = sdz['1h_dz']
+    dz_1hr_0 = dz_1h.iloc[0]
+    dz_1h_1 = dz_1h.iloc[-1]
+
+    buy1 = max(dz_1hr_0,dz_1h_1)
+    buy2 = (dz_1hr_0 + dz_1h_1) / 2
+    #print(buy1,buy2)
+
+    #if it is a sell - sell #1 at the lowest and #2 at the average
+    sell1 =min(sz_1hr_0,sz_1hr_1)
+    sell2 =(sz_1hr_0 + sz_1hr_1) / 2
+
+    #see if in any positions - if no place an order
+    position, in_pos,pos_size, pos_sym,entry_px,pnl_perc,long = get_position()
+    #print(position, in_pos,pos_size, pos_sym,entry_px,pnl_perc,long)
+    print(f'position size is {pos_size} in pos is {in_pos} pnl pnl_percentage is {pnl_perc} and long is {long}')
+
+    openorders = get_open_order_prices()
+    #print(openorders)
+    openorders = [float(d) for d in openorders]
+
+    if buy2 and sell2 in openorders:
+        new_orders = False
+        print('buy2 and sell2 are in open orders')
+    else:
+        new_orders = True
+        print('no open orders')
+    
+    account:LocalAccount = eth_account.Account.from_key(hyper_secret)
+    info = Info(constants.MAINNET_API_URL,skip_ws=True)
+    user_state = info.user_state(account.address)
+    account_value = user_state["margin_summary"]["accountValue"]
+    account_value = float(account_value)
+
+    #check the ATR to see if we need to set no trading as true
+    no_trading = get_atr_no_trading()
+    if account_value < min_acc_value:
+        no_trading = True
+
+    if not in_pos and new_orders == True and no_trading == False:
+
+        print('not in position... setting orders...')
+
+        #cancel all orders
+        cancel_all_orders()
+
+        leverage,size,long_only,short_only = get_leverage()
+
+        if long_only == True:
+            #create a buy order
+            #buy1 = limit_order(symbol.True,size,buy2,False)
+            buy1 = limit_order(symbol,True,size,buy2,False)
+        elif short_only == True:
+            #create a sell order
+            #sell1 = limit_order(symbol.False,size,sell2,False)
+            sell2 = limit_order(symbol,False,size,sell2,False)
+        else:
+            buy2 = limit_order(symbol,True,size/2,buy2,False)
+            
