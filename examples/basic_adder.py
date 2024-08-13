@@ -1,3 +1,4 @@
+## this is a sample setup for using hyperliquid gotten from its official documentation 
 import eth_account
 from eth_account.signers.local import LocalAccount
 import json
