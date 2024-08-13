@@ -20,7 +20,7 @@ from hyperliquid.utils.types import (
     Union,
     UserEventsMsg,
 )
-import example_utils
+import examples.basic_adder as basic_adder
 
 # How far from the best bid and offer this strategy ideally places orders. Currently set to .3%
 # i.e. if the best bid is $1000, this strategy will place a resting bid at $997
@@ -174,7 +174,7 @@ class BasicAdder:
 def main():
     # Setting this to logging.DEBUG can be helpful for debugging websocket callback issues
     logging.basicConfig(level=logging.ERROR)
-    address, info, exchange = example_utils.setup(constants.TESTNET_API_URL)
+    address, info, exchange = basic_adder.setup(constants.TESTNET_API_URL)
     BasicAdder(address, info, exchange)
 
 
