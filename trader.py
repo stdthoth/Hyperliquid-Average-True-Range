@@ -196,7 +196,35 @@ def get_leverage():
 
     print('leverage:',leverage,'signal:',signal)
 
+    account:LocalAccount = eth_account.Account.from_key(hyper_secret)
+    exchange = Exchange(account.address,constants.MAINNET_API_URL)
+    info = Info(constants.MAINNET_API_URL,skip_ws=True)
+    
+    #get the user_state and print out leverage information
+    user_state = info.user_state(account.address)
+    account_value = user_state["marginSummary"]["accountValue"]
+    account_value = float(account_value)
+    print(account_value)
 
+    account_value_95 = account_value * .95
+    #print(f'current leverage for {symbol}:')
+    #print(json.dumps(user_state["assetPositions"][exchange.coin_to_asset[symbol]["position"]]))
+
+    #print('adjusting leverage...')
+    #Set the ETH leverage to 21x cross margin
+    print(exchange.update_leverage(leverage,symbol))
+    price = asking_bid(symbol)[0]
+
+    size = (account_value_95/price) * leverage
+    size = int(size)
+    print(f'this is the size that we can use for 95% of acct value {size}')
+
+
+    user_state = info.user_state(account.address)
+    #print('current leverage for {symbol}:')
+    #print(json.dumps(user_state["assetPositions"][exchange.coin_to_asset[symbol]["position"]]))
+
+    return leverage, size,long_only,short_only
 
 
 
@@ -343,7 +371,7 @@ def get_atr_no_trading():
     df = pd.DataFrame(bars[:-1],columns=['timestamp','open','high','close','volume'])
     df['timestamp'] = pd.to_datetime(df['timestamp'],unit='ms')
 
-    atr = average_true_range(df,7)
+    atr = average_true_range(df,3)
     #print(atr)
 
     df['no_trading'] = (df['tr'] > max_trading_range).any()
@@ -353,7 +381,6 @@ def get_atr_no_trading():
     #print(df)
 
     print(f'no trading {no_trading}')    
-
 
 def bot():
     sdz = get_supply_and_demand_zones(symbol,timeframe,limit)
@@ -394,7 +421,7 @@ def bot():
     account:LocalAccount = eth_account.Account.from_key(hyper_secret)
     info = Info(constants.MAINNET_API_URL,skip_ws=True)
     user_state = info.user_state(account.address)
-    account_value = user_state["margin_summary"]["accountValue"]
+    account_value = user_state["marginSummary"]["accountValue"]
     account_value = float(account_value)
 
     #check the ATR to see if we need to set no trading as true
@@ -421,4 +448,15 @@ def bot():
             sell2 = limit_order(symbol,False,size,sell2,False)
         else:
             buy2 = limit_order(symbol,True,size/2,buy2,False)
-            
+            sell2 = limit_order(symbol,False,size/2,sell2,False)
+    
+    elif in_pos and no_trading == False:
+        print('we are in positions.... checking PNL hit')
+        close_with_pnl()
+    elif no_trading == True:
+        cancel_all_orders()
+        kill_switch(pos_sym)
+    else:
+        print('orders are set 😎..')
+
+    time.sleep(3)
